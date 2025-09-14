@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 
 load_dotenv()
-API_KEY = os.getenv('LASTFMAPI_KEY')
+API_KEY = os.getenv('LASTFM_API_KEY')
 
 st.title('Tendências Musicais com Last.fm API')
 
