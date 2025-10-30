@@ -37,4 +37,5 @@ typing_extensions==4.15.0
 tzdata==2025.2
 urllib3==2.5.0
 watchdog==6.0.0
-st-aggrid==0.4.4.post2
+st-aggrid==1.0.5
+
