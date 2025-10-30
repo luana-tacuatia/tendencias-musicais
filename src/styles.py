@@ -1,12 +1,5 @@
 import streamlit as st
 
-GENRE_COLOR_MAP = {
-    "Pop": "#ff4cff",
-    "Rock": "#1f77b4",
-    "Jazz": "#ff7f0e",
-    "Clássica": "#8c564b",
-}
-
 
 def apply_styles():
     st.markdown(
