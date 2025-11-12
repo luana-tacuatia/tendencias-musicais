@@ -19,6 +19,7 @@ def get_api_key() -> str:
         raise ValueError("API key do Last.fm não encontrada. Configure .env ou st.secrets")
     return key
 
+
 # ========================
 # Conversões seguras
 # ========================
@@ -27,6 +28,7 @@ def safe_int(value: Any) -> Optional[int]:
         return int(value)
     except Exception:
         return None
+
 
 # ========================
 # Conversão de tracks para DataFrame
@@ -39,7 +41,11 @@ def tracks_to_dataframe(tracks: list) -> pd.DataFrame:
             df_sorted["_pc_sort"] = df_sorted["Playcount"].apply(
                 lambda x: int(x) if isinstance(x, (int, float)) else -1
             )
-            df_sorted = df_sorted.sort_values("_pc_sort", ascending=False).drop(columns=["_pc_sort"]).reset_index(drop=True)
+            df_sorted = (
+                df_sorted.sort_values("_pc_sort", ascending=False)
+                .drop(columns=["_pc_sort"])
+                .reset_index(drop=True)
+            )
             df_sorted.insert(0, "Posição", range(1, len(df_sorted) + 1))
             return df_sorted
         except Exception:
@@ -49,22 +55,25 @@ def tracks_to_dataframe(tracks: list) -> pd.DataFrame:
         df.insert(0, "Posição", range(1, len(df) + 1))
     return df
 
+
 # ========================
 # Salvamento semanal genérico
 # ========================
 def save_weekly_snapshot(df: pd.DataFrame, region: str = "Brasil", base_dir: str = "data"):
     output_dir = Path(base_dir) / region.lower().replace(" ", "_")
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     today = datetime.date.today()
     year, week, weekday = today.isocalendar()
     file_path = output_dir / f"{year}-W{week}.json"
 
+    # 🔧 Altere este IF se quiser salvar em qualquer dia (não só na quarta)
     if weekday == 2 and not file_path.exists():  # quarta-feira
         df.to_json(file_path, orient="records", force_ascii=False, indent=2)
         st.toast(f"📁 Snapshot semanal salvo ({region}): {file_path}", icon="💾")
     elif file_path.exists():
         st.info(f"📁 Snapshot já existe para {region}, semana {week}: {file_path}")
+
 
 # ========================
 # Carregar snapshots semanais
@@ -79,6 +88,7 @@ def load_weekly_snapshots(region: str = "Brasil", base_dir: str = "data"):
         week = int(f.stem.split("-W")[1])
         dfs.append((week, pd.read_json(f)))
     return dfs
+
 
 # ========================
 # Comparação de semanas
@@ -118,10 +128,14 @@ def compare_weeks(region: str = "Brasil", base_dir: str = "data", top_n: int = 5
     key_col = cols_needed[0]  # primeira coluna é usada para merge
     merged = df1_subset.merge(df2_subset, on=key_col, suffixes=(f"_sem{week1}", f"_sem{week2}"))
 
-    merged["ΔPlaycount"] = merged.filter(like=f"Playcount_sem{week2}").iloc[:, 0] - \
-                           merged.filter(like=f"Playcount_sem{week1}").iloc[:, 0]
-    merged["ΔListeners"] = merged.filter(like=f"Listeners_sem{week2}").iloc[:, 0] - \
-                            merged.filter(like=f"Listeners_sem{week1}").iloc[:, 0]
+    merged["ΔPlaycount"] = (
+        merged.filter(like=f"Playcount_sem{week2}").iloc[:, 0]
+        - merged.filter(like=f"Playcount_sem{week1}").iloc[:, 0]
+    )
+    merged["ΔListeners"] = (
+        merged.filter(like=f"Listeners_sem{week2}").iloc[:, 0]
+        - merged.filter(like=f"Listeners_sem{week1}").iloc[:, 0]
+    )
 
     cols_to_show = [key_col, "ΔPlaycount", "ΔListeners"]
     if "Artista" in merged.columns:
@@ -130,8 +144,9 @@ def compare_weeks(region: str = "Brasil", base_dir: str = "data", top_n: int = 5
     st.subheader(f"📊 Variação semanal ({week1} → {week2}) - {region}")
     st.dataframe(merged[cols_to_show])
 
+
 # ========================
-# Tendência semanal
+# Tendência semanal (corrigida)
 # ========================
 def show_weekly_trend(region: str = "Brasil", top_n: int = 5, analysis_type: str = "Top Músicas", base_dir: str = "data"):
     dfs = load_weekly_snapshots(region, base_dir)
@@ -157,6 +172,12 @@ def show_weekly_trend(region: str = "Brasil", top_n: int = 5, analysis_type: str
             })
 
     df_all = pd.DataFrame(records)
+
+    # Evitar erro quando df_all está vazio ou sem coluna "Semana"
+    if df_all.empty or "Semana" not in df_all.columns:
+        st.warning("Não há dados semanais suficientes para exibir tendências.")
+        return
+
     latest_week = df_all["Semana"].max()
     top_items = (
         df_all[df_all["Semana"] == latest_week]
@@ -178,6 +199,7 @@ def show_weekly_trend(region: str = "Brasil", top_n: int = 5, analysis_type: str
         .interactive()
     )
     st.altair_chart(chart, use_container_width=True)
+
 
 # ========================
 # Gerenciamento diário de dados
